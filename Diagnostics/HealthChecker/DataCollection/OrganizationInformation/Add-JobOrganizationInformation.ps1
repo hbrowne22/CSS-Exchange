@@ -9,7 +9,11 @@
 
 function Add-JobOrganizationInformation {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Legacy", "Queue", "StartNow")]
+        [string]$RunType
+    )
     process {
         <#
             Non Default Script Block Dependencies
@@ -20,18 +24,24 @@ function Add-JobOrganizationInformation {
         . $PSScriptRoot\Invoke-JobOrganizationInformation.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
-        $sbInjectionParams = @{
-            PrimaryScriptBlock = ${Function:Invoke-JobOrganizationInformation}
-            IncludeScriptBlock = @(${Function:Get-MonitoringOverride}, ${Function:Invoke-DefaultConnectExchangeShell}, ${Function:Get-ExchangeContainer})
-        }
-        $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
-        $params = @{
-            JobCommand   = "Start-Job"
-            JobParameter = @{
-                ScriptBlock = $scriptBlock
+
+        if ($RunType -eq "Legacy") {
+            Invoke-JobOrganizationInformation
+        } else {
+            $sbInjectionParams = @{
+                PrimaryScriptBlock = ${Function:Invoke-JobOrganizationInformation}
+                IncludeScriptBlock = @(${Function:Get-MonitoringOverride}, ${Function:Invoke-DefaultConnectExchangeShell}, ${Function:Get-ExchangeContainer})
             }
-            JobId        = "Invoke-JobOrganizationInformation"
+            $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
+            $params = @{
+                JobCommand   = "Start-Job"
+                JobParameter = @{
+                    ScriptBlock = $scriptBlock
+                }
+                JobId        = "Invoke-JobOrganizationInformation"
+                TryStartNow  = $RunType -eq "StartNow"
+            }
+            Add-JobQueue @params
         }
-        Add-JobQueue @params
     }
 }
