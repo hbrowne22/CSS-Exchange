@@ -16,21 +16,21 @@ function Add-JobHardwareInformation {
         [string]$RunType
     )
     process {
-        <#
-            Non Default Script Block Dependencies
-                Get-WmiObjectCriticalHandler
-                Get-WmiObjectHandler
-        #>
+
         . $PSScriptRoot\Invoke-JobHardwareInformation.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
+        $nonDefaultSbDependencies = @(
+            ${Function:Get-WmiObjectCriticalHandler},
+            ${Function:Get-WmiObjectHandler}
+        )
 
         if ($RunType -eq "Legacy") {
             throw "Legacy Not Implemented"
         } else {
             $params = @{
                 PrimaryScriptBlock = ${Function:Invoke-JobHardwareInformation}
-                IncludeScriptBlock = @(${Function:Get-WmiObjectCriticalHandler}, ${Function:Get-WmiObjectHandler})
+                IncludeScriptBlock = $nonDefaultSbDependencies
             }
             $scriptBlock = Get-HCDefaultSBInjection @params
             $params = @{
