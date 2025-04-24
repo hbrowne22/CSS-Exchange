@@ -41,8 +41,10 @@ function Get-HealthCheckerDataObject {
                 CustomCertificates  = ($certs | Get-ExchangeCertificateCustomObject @certCustomParams)
             }
 
+            [array]$connector = $OrganizationInformationResult.GetSendConnector
+            [array]$connector += $ExchangeCmdletResult.GetReceiveConnector
             $customConnectorParams = @{
-                Connector   = @($OrganizationInformationResult.GetSendConnector, $ExchangeCmdletResult.GetReceiveConnector)
+                Connector   = $connector
                 Certificate = $certs
             }
 
