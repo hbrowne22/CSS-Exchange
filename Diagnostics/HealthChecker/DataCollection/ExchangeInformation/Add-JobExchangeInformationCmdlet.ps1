@@ -32,20 +32,19 @@ function Add-JobExchangeInformationCmdlet {
         }
     }
     end {
-        <#
-            Non Default Script Block Dependencies
-                Invoke-DefaultConnectExchangeShell
-                Get-ExchangeContainer
-                Get-MonitoringOverride
-                Get-RemoteRegistrySubKey
-                ConvertTo-ExchangeCertificate
-        #>
+
         . $PSScriptRoot\Invoke-JobExchangeInformationCmdlet.ps1
+
+        $nonDefaultSbDependencies = @(
+            ${Function:ConvertTo-ExchangeCertificate}
+            ${Function:Get-ExchangeContainer},
+            ${Function:Get-MonitoringOverride}
+            ${Function:Invoke-DefaultConnectExchangeShell}
+        )
 
         $sbInjectionParams = @{
             PrimaryScriptBlock = ${Function:Invoke-JobExchangeInformationCmdlet}
-            IncludeScriptBlock = @(${Function:Invoke-DefaultConnectExchangeShell}, ${Function:Get-ExchangeContainer},
-                ${Function:Get-MonitoringOverride}, ${Function:ConvertTo-ExchangeCertificate})
+            IncludeScriptBlock = $nonDefaultSbDependencies
         }
         $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
 
