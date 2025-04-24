@@ -19,30 +19,28 @@ function Add-JobExchangeInformationLocal {
         [string]$RunType
     )
     process {
-        <#
-            Non Default Script Block Dependencies
-            Get-ExchangeBuildVersionInformation
-            GetExchangeBuildDictionary
-            GetValidatePossibleParameters
-            ValidateSUParameter
-            ValidateCUParameter
-            ValidateVersionParameter
-            Test-ExchangeBuildGreaterOrEqualThanSecurityPatch
-            Get-RemoteRegistryValue
-            Get-RemoteRegistrySubKey
-        #>
+
         . $PSScriptRoot\Invoke-JobExchangeInformationLocal.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
+        $nonDefaultSbDependencies = @(
+            ${Function:GetExchangeBuildDictionary},
+            ${Function:GetValidatePossibleParameters},
+            ${Function:ValidateCUParameter},
+            ${Function:ValidateSUParameter},
+            ${Function:ValidateVersionParameter},
+            ${Function:Get-ExchangeBuildVersionInformation},
+            ${Function:Get-RemoteRegistrySubKey},
+            ${Function:Get-RemoteRegistryValue},
+            ${Function:Test-ExchangeBuildGreaterOrEqualThanSecurityPatch}
+        )
 
         if ($RunType -eq "Legacy") {
             throw "Legacy Not Implemented"
         } else {
             $sbInjectionParams = @{
                 PrimaryScriptBlock = ${Function:Invoke-JobExchangeInformationLocal}
-                IncludeScriptBlock = @(${Function:Get-ExchangeBuildVersionInformation}, ${Function:GetExchangeBuildDictionary}, ${Function:GetValidatePossibleParameters},
-                    ${Function:ValidateSUParameter}, ${Function:ValidateCUParameter}, ${Function:ValidateVersionParameter}, ${Function:Get-RemoteRegistrySubKey},
-                    ${Function:Get-RemoteRegistryValue}, ${Function:Test-ExchangeBuildGreaterOrEqualThanSecurityPatch})
+                IncludeScriptBlock = $nonDefaultSbDependencies
             }
             $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
             $params = @{
