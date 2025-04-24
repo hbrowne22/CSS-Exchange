@@ -17,32 +17,31 @@ function Add-JobAnalyzerEngine {
         [string]$ExecutingServer
     )
     process {
-        <#
-            Non Default Script Block Dependencies
-            Get-ExchangeBuildVersionInformation
-            GetExchangeBuildDictionary
-            GetValidatePossibleParameters
-            ValidateSUParameter
-            ValidateCUParameter
-            ValidateVersionParameter
-            Test-ExchangeBuildGreaterOrEqualThanSecurityPatch
-            Test-ExchangeBuildGreaterOrEqualThanBuild
-            Test-ExchangeBuildLessThanBuild
-            Get-VisualCRedistributableLatest
-            Get-NETFrameworkVersion
-            GetNetVersionDictionary
-            ValidateNetNameParameter
-        #>
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
+        $nonDefaultSbDependencies = @(
+            ${Function:GetExchangeBuildDictionary},
+            ${Function:GetNetVersionDictionary},
+            ${Function:GetValidatePossibleParameters},
+            ${Function:ValidateCUParameter},
+            ${Function:ValidateNetNameParameter},
+            ${Function:ValidateSUParameter},
+            ${Function:ValidateVersionParameter},
+            ${Function:Get-ExchangeBuildVersionInformation},
+            ${Function:Get-NETFrameworkVersion},
+            ${Function:Get-VisualCRedistributableInfo},
+            ${Function:Get-VisualCRedistributableLatest},
+            ${Function:Test-ExchangeBuildEqualBuild},
+            ${Function:Test-ExchangeBuildGreaterOrEqualThanBuild},
+            ${Function:Test-ExchangeBuildGreaterOrEqualThanSecurityPatch},
+            ${Function:Test-ExchangeBuildLessThanBuild},
+            ${Function:Test-VisualCRedistributableInstalled}
+            ${Function:Test-VisualCRedistributableUpToDate}
+        )
 
         $sbInjectionParams = @{
             PrimaryScriptBlock = ${Function:Invoke-JobAnalyzerEngine}
-            IncludeScriptBlock = @(${Function:Get-ExchangeBuildVersionInformation}, ${Function:GetExchangeBuildDictionary}, ${Function:GetExchangeBuildDictionary},
-                ${Function:GetValidatePossibleParameters}, ${Function:ValidateSUParameter}, ${Function:ValidateCUParameter}, ${Function:ValidateVersionParameter},
-                ${Function:Test-ExchangeBuildGreaterOrEqualThanSecurityPatch}, ${Function:Get-VisualCRedistributableLatest}, ${Function:Get-NETFrameworkVersion},
-                ${Function:GetNetVersionDictionary}, ${Function:ValidateNetNameParameter}, ${Function:Test-ExchangeBuildGreaterOrEqualThanBuild}, ${Function:Test-ExchangeBuildLessThanBuild},
-                ${Function:Test-ExchangeBuildEqualBuild}, ${Function:Test-VisualCRedistributableUpToDate}, ${Function:Get-VisualCRedistributableInfo}, ${Function:Test-VisualCRedistributableInstalled})
+            IncludeScriptBlock = $nonDefaultSbDependencies
         }
         $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
         $params = @{
