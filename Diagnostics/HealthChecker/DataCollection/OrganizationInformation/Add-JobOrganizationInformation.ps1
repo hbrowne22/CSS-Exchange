@@ -15,22 +15,22 @@ function Add-JobOrganizationInformation {
         [string]$RunType
     )
     process {
-        <#
-            Non Default Script Block Dependencies
-                Invoke-DefaultConnectExchangeShell
-                Get-ExchangeContainer
-                Get-MonitoringOverride
-        #>
+
         . $PSScriptRoot\Invoke-JobOrganizationInformation.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
+        $nonDefaultSbDependencies = @(
+            ${Function:Get-ExchangeContainer},
+            ${Function:Get-MonitoringOverride},
+            ${Function:Invoke-DefaultConnectExchangeShell}
+        )
 
         if ($RunType -eq "Legacy") {
             Invoke-JobOrganizationInformation
         } else {
             $sbInjectionParams = @{
                 PrimaryScriptBlock = ${Function:Invoke-JobOrganizationInformation}
-                IncludeScriptBlock = @(${Function:Get-MonitoringOverride}, ${Function:Invoke-DefaultConnectExchangeShell}, ${Function:Get-ExchangeContainer})
+                IncludeScriptBlock = $nonDefaultSbDependencies
             }
             $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
             $params = @{
