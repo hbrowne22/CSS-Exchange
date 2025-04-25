@@ -132,8 +132,11 @@ param(
 
     # TODO: Remove this prior to public release
     [Parameter(Mandatory = $false)]
-    [ValidateSet("MainScenario", "LegacyOption")]
-    [string]$DevTestingScenario = "MainScenario",
+    [ValidateScript( { $_ -ge 2 -and $_ -le 30 })]
+    [string]$DevTestingDefaultOptimizedServerToJobSize = 8,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$ForceLegacy,
 
     [Parameter(Mandatory = $false, ParameterSetName = "HealthChecker", HelpMessage = "Skip over checking for a new updated version of the script.")]
     [Parameter(Mandatory = $false, ParameterSetName = "MailboxReport", HelpMessage = "Skip over checking for a new updated version of the script.")]
