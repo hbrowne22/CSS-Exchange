@@ -74,44 +74,54 @@ function Get-HealthCheckerDataCollection {
             return $false
         }
 
-        if ($DevTestingScenario -eq "MainScenario") {
-            # Set to the current main scenario that appears to work the best.
-            $DevTestingScenario = "Scenario1"
-        }
-
-        Write-Verbose "DevTestingScenario is set to $DevTestingScenario"
         $hardwareRunType = $osRunType = $exchLocalRunType = $orgRunType = "StartNow"
         $exchCmdletRunType = "QueueOptimize"
         $getExchangeServerList = @{}
-        $Script:defaultOptimizedServerToJobSize = 8
+        $Script:defaultOptimizedServerToJobSize = $DevTestingDefaultOptimizedServerToJobSize
 
         if (([System.Math]::Ceiling($ServerNames.Count / $defaultOptimizedServerToJobSize )) -eq 1) {
             $orgRunType = $exchCmdletRunType = "Legacy"
         }
+
+        if ($ForceLegacy) {
+
+            if ($ServerNames.Count -gt 1) {
+                throw "ForceLegacy option is only available to run against the Exchange Server Locally"
+            }
+
+            if ($ServerNames.Split(".") -ne $env:COMPUTERNAME) {
+                throw "ForceLegacy option is only available to run against the Exchange Server Locally. Please run on the server $ServerNames"
+            }
+
+            Write-Verbose "Force Legacy has been applied."
+            $hardwareRunType = $osRunType = $exchLocalRunType = $orgRunType = $exchCmdletRunType = "Legacy"
+        }
     }
     process {
         # Loop through all the server names provided to make sure they are an Exchange server, and to get the FQDN for them.
-        $stopWatch = [System.Diagnostics.Stopwatch]::StartNew()
-        foreach ($serverName in $ServerNames) {
-            try {
-                $getExchangeServer = Get-ExchangeServer $serverName -ErrorAction Stop
-                # test the name to know what we are going to use for the Invoke-Command logic.
-                $serverKeyName = $getExchangeServer.FQDN
-                if (-not (TestComputerName $getExchangeServer.FQDN)) {
-                    if (-not (TestComputerName $getExchangeServer.Name)) {
-                        Write-Warning "Unable to connect to server $serverName. Please run locally"
-                        continue
+        if (-not $ForceLegacy) {
+            $stopWatch = [System.Diagnostics.Stopwatch]::StartNew()
+            foreach ($serverName in $ServerNames) {
+                try {
+                    $getExchangeServer = Get-ExchangeServer $serverName -ErrorAction Stop
+                    # test the name to know what we are going to use for the Invoke-Command logic.
+                    $serverKeyName = $getExchangeServer.FQDN
+                    if (-not (TestComputerName $getExchangeServer.FQDN)) {
+                        if (-not (TestComputerName $getExchangeServer.Name)) {
+                            Write-Warning "Unable to connect to server $serverName. Please run locally"
+                            continue
+                        }
+                        $serverKeyName = $getExchangeServer.Name
                     }
-                    $serverKeyName = $getExchangeServer.Name
-                }
 
-                $getExchangeServerList.Add($serverKeyName, $getExchangeServer)
-            } catch {
-                Write-Warning "Unable to find server: $serverName"
-                Invoke-CatchActions
+                    $getExchangeServerList.Add($serverKeyName, $getExchangeServer)
+                } catch {
+                    Write-Warning "Unable to find server: $serverName"
+                    Invoke-CatchActions
+                }
             }
+            Write-Verbose "Took $($stopWatch.Elapsed.TotalSeconds) seconds to get the Exchange Server and determine what names we can use."
         }
-        Write-Verbose "Took $($stopWatch.Elapsed.TotalSeconds) seconds to get the Exchange Server and determine what names we can use."
 
         # Set the script variable for the name of the computer that we want to connect to for EMS
         $Script:PrimaryRemoteShellConnectionPoint = (Get-PSSession | Where-Object { $_.Availability -eq "Available" -and $_.State -eq "Opened" } | Select-Object -First 1).ComputerName
@@ -124,8 +134,16 @@ function Get-HealthCheckerDataCollection {
         $generationTime = Get-Date
         $exchCmdletServerJobData = @{}
 
-        if ($DevTestingScenario -eq "LegacyOption") {
-            # TODO
+        if ($ForceLegacy) {
+            try {
+                $getExchangeServer = Get-ExchangeServer $ServerNames -ErrorAction Stop
+                $getExchangeServerList.Add($getExchangeServer.Name, $getExchangeServer)
+            } catch {
+                Write-Error "Unable to find Exchange Server $ServerNames" -ErrorAction Stop
+            }
+
+            $jobResults = @{}
+            $orgCmdletJobResults = Add-JobOrganizationInformation -RunType "Legacy"
         } else {
             # Add all the jobs to the queue that we need.
             if ($orgRunType -ne "Legacy") {
