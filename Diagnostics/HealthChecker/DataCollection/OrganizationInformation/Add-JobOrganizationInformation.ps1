@@ -6,17 +6,12 @@
 . $PSScriptRoot\..\..\..\..\Shared\ActiveDirectoryFunctions\Get-ExchangeContainer.ps1
 . $PSScriptRoot\..\..\..\..\Shared\Get-MonitoringOverride.ps1
 . $PSScriptRoot\..\..\..\..\Shared\JobManagement\Add-JobQueue.ps1
+. $PSScriptRoot\Invoke-JobOrganizationInformation.ps1
 
 function Add-JobOrganizationInformation {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateSet("Legacy", "Queue", "StartNow")]
-        [string]$RunType
-    )
+    param()
     process {
-
-        . $PSScriptRoot\Invoke-JobOrganizationInformation.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
         $nonDefaultSbDependencies = @(
@@ -25,23 +20,19 @@ function Add-JobOrganizationInformation {
             ${Function:Invoke-DefaultConnectExchangeShell}
         )
 
-        if ($RunType -eq "Legacy") {
-            Invoke-JobOrganizationInformation
-        } else {
-            $sbInjectionParams = @{
-                PrimaryScriptBlock = ${Function:Invoke-JobOrganizationInformation}
-                IncludeScriptBlock = $nonDefaultSbDependencies
-            }
-            $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
-            $params = @{
-                JobCommand   = "Start-Job"
-                JobParameter = @{
-                    ScriptBlock = $scriptBlock
-                }
-                JobId        = "Invoke-JobOrganizationInformation"
-                TryStartNow  = $RunType -eq "StartNow"
-            }
-            Add-JobQueue @params
+        $sbInjectionParams = @{
+            PrimaryScriptBlock = ${Function:Invoke-JobOrganizationInformation}
+            IncludeScriptBlock = $nonDefaultSbDependencies
         }
+        $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
+        $params = @{
+            JobCommand   = "Start-Job"
+            JobParameter = @{
+                ScriptBlock = $scriptBlock
+            }
+            JobId        = "Invoke-JobOrganizationInformation"
+            TryStartNow  = $true
+        }
+        Add-JobQueue @params
     }
 }
