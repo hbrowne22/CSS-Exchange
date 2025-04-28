@@ -4,20 +4,15 @@
 . $PSScriptRoot\Get-WmiObjectCriticalHandler.ps1
 . $PSScriptRoot\..\..\Helpers\Get-HCDefaultSBInjection.ps1
 . $PSScriptRoot\..\..\..\..\Shared\JobManagement\Add-JobQueue.ps1
+. $PSScriptRoot\Invoke-JobHardwareInformation.ps1
 
 function Add-JobHardwareInformation {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ComputerName,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateSet("Legacy", "Queue", "StartNow")]
-        [string]$RunType
+        [string]$ComputerName
     )
     process {
-
-        . $PSScriptRoot\Invoke-JobHardwareInformation.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
         $nonDefaultSbDependencies = @(
@@ -25,23 +20,19 @@ function Add-JobHardwareInformation {
             ${Function:Get-WmiObjectHandler}
         )
 
-        if ($RunType -eq "Legacy") {
-            throw "Legacy Not Implemented"
-        } else {
-            $params = @{
-                PrimaryScriptBlock = ${Function:Invoke-JobHardwareInformation}
-                IncludeScriptBlock = $nonDefaultSbDependencies
-            }
-            $scriptBlock = Get-HCDefaultSBInjection @params
-            $params = @{
-                JobParameter = @{
-                    ComputerName = $ComputerName
-                    ScriptBlock  = $scriptBlock
-                }
-                JobId        = "Invoke-JobHardwareInformation-$ComputerName"
-                TryStartNow  = $RunType -eq "StartNow"
-            }
-            Add-JobQueue @params
+        $params = @{
+            PrimaryScriptBlock = ${Function:Invoke-JobHardwareInformation}
+            IncludeScriptBlock = $nonDefaultSbDependencies
         }
+        $scriptBlock = Get-HCDefaultSBInjection @params
+        $params = @{
+            JobParameter = @{
+                ComputerName = $ComputerName
+                ScriptBlock  = $scriptBlock
+            }
+            JobId        = "Invoke-JobHardwareInformation-$ComputerName"
+            TryStartNow  = $true
+        }
+        Add-JobQueue @params
     }
 }
