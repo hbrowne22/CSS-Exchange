@@ -4,6 +4,7 @@
 . $PSScriptRoot\..\..\Helpers\Get-HCDefaultSBInjection.ps1
 . $PSScriptRoot\..\..\..\..\Shared\Get-ExchangeBuildVersionInformation.ps1
 . $PSScriptRoot\..\..\..\..\Shared\CompareExchangeBuildLevel.ps1
+. $PSScriptRoot\Invoke-JobExchangeInformationLocal.ps1
 
 function Add-JobExchangeInformationLocal {
     [CmdletBinding()]
@@ -12,15 +13,9 @@ function Add-JobExchangeInformationLocal {
         [string]$ComputerName,
 
         [Parameter(Mandatory = $true)]
-        [object]$GetExchangeServer,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateSet("Legacy", "Queue", "StartNow")]
-        [string]$RunType
+        [object]$GetExchangeServer
     )
     process {
-
-        . $PSScriptRoot\Invoke-JobExchangeInformationLocal.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
         $nonDefaultSbDependencies = @(
@@ -35,24 +30,20 @@ function Add-JobExchangeInformationLocal {
             ${Function:Test-ExchangeBuildGreaterOrEqualThanSecurityPatch}
         )
 
-        if ($RunType -eq "Legacy") {
-            throw "Legacy Not Implemented"
-        } else {
-            $sbInjectionParams = @{
-                PrimaryScriptBlock = ${Function:Invoke-JobExchangeInformationLocal}
-                IncludeScriptBlock = $nonDefaultSbDependencies
-            }
-            $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
-            $params = @{
-                JobParameter = @{
-                    ComputerName = $ComputerName
-                    ScriptBlock  = $scriptBlock
-                    ArgumentList = $GetExchangeServer
-                }
-                JobId        = "Invoke-JobExchangeInformationLocal-$ComputerName"
-                TryStartNow  = $RunType -eq "StartNow"
-            }
-            Add-JobQueue @params
+        $sbInjectionParams = @{
+            PrimaryScriptBlock = ${Function:Invoke-JobExchangeInformationLocal}
+            IncludeScriptBlock = $nonDefaultSbDependencies
         }
+        $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
+        $params = @{
+            JobParameter = @{
+                ComputerName = $ComputerName
+                ScriptBlock  = $scriptBlock
+                ArgumentList = $GetExchangeServer
+            }
+            JobId        = "Invoke-JobExchangeInformationLocal-$ComputerName"
+            TryStartNow  = $true
+        }
+        Add-JobQueue @params
     }
 }
