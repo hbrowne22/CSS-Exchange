@@ -3,10 +3,15 @@
 
 . $PSScriptRoot\Get-HealthCheckerDataObject.ps1
 . $PSScriptRoot\..\DataCollection\OrganizationInformation\Add-JobOrganizationInformation.ps1
+. $PSScriptRoot\..\DataCollection\OrganizationInformation\Invoke-JobOrganizationInformation.ps1
 . $PSScriptRoot\..\DataCollection\ServerInformation\Add-JobHardwareInformation.ps1
 . $PSScriptRoot\..\DataCollection\ServerInformation\Add-JobOperatingSystemInformation.ps1
+. $PSScriptRoot\..\DataCollection\ServerInformation\Invoke-JobHardwareInformation.ps1
+. $PSScriptRoot\..\DataCollection\ServerInformation\Invoke-JobOperatingSystemInformation.ps1
 . $PSScriptRoot\..\DataCollection\ExchangeInformation\Add-JobExchangeInformationCmdlet.ps1
 . $PSScriptRoot\..\DataCollection\ExchangeInformation\Add-JobExchangeInformationLocal.ps1
+. $PSScriptRoot\..\DataCollection\ExchangeInformation\Invoke-JobExchangeInformationCmdlet.ps1
+. $PSScriptRoot\..\DataCollection\ExchangeInformation\Invoke-JobExchangeInformationLocal.ps1
 . $PSScriptRoot\..\..\..\Shared\JobManagement\Wait-JobQueue.ps1
 . $PSScriptRoot\..\..\..\Shared\ScriptBlock\RemoteSBLoggingFunctions.ps1
 
@@ -74,7 +79,7 @@ function Get-HealthCheckerDataCollection {
             return $false
         }
 
-        $hardwareRunType = $osRunType = $exchLocalRunType = $orgRunType = "StartNow"
+        $orgRunType = "StartNow"
         $exchCmdletRunType = "QueueOptimize"
         $getExchangeServerList = @{}
         $Script:defaultOptimizedServerToJobSize = $DevTestingDefaultOptimizedServerToJobSize
@@ -94,7 +99,7 @@ function Get-HealthCheckerDataCollection {
             }
 
             Write-Verbose "Force Legacy has been applied."
-            $hardwareRunType = $osRunType = $exchLocalRunType = $orgRunType = $exchCmdletRunType = "Legacy"
+            $orgRunType = $exchCmdletRunType = "Legacy"
         }
     }
     process {
@@ -143,23 +148,31 @@ function Get-HealthCheckerDataCollection {
             }
 
             $jobResults = @{}
-            $orgCmdletJobResults = Add-JobOrganizationInformation -RunType "Legacy"
+            $orgCmdletJobResults = Add-JobOrganizationInformation
         } else {
             # Add all the jobs to the queue that we need.
             if ($orgRunType -ne "Legacy") {
-                Add-JobOrganizationInformation -RunType $orgRunType
+                Add-JobOrganizationInformation
             }
 
             foreach ($serverName in $getExchangeServerList.Keys) {
-                Add-JobHardwareInformation -ComputerName $serverName -RunType $hardwareRunType
-                Add-JobOperatingSystemInformation -ComputerName $serverName -RunType $osRunType
-                Add-JobExchangeInformationLocal -ComputerName $serverName -GetExchangeServer ($getExchangeServerList[$serverName]) -RunType $exchLocalRunType
+                Add-JobHardwareInformation -ComputerName $serverName
+                Add-JobOperatingSystemInformation -ComputerName $serverName
+                Add-JobExchangeInformationLocal -ComputerName $serverName -GetExchangeServer ($getExchangeServerList[$serverName])
             }
 
-            $exchCmdletJobResults = $getExchangeServerList.Keys | Add-JobExchangeInformationCmdlet -RunType $exchCmdletRunType -JobKeyMatchingToServer ([ref]$exchCmdletServerJobData)
+            if ($exchCmdletRunType -eq "Legacy") {
+                $exchCmdletJobResults = @{}
+                foreach ($serverName in $getExchangeServerList.Keys) {
+                    $data = Invoke-JobExchangeInformationCmdlet -ServerName $serverName
+                    $exchCmdletJobResults.Add("Invoke-JobExchangeInformationCmdlet-$serverName", $data)
+                }
+            } else {
+                $getExchangeServerList.Keys | Add-JobExchangeInformationCmdlet -JobKeyMatchingToServer ([ref]$exchCmdletServerJobData)
+            }
 
             if ($orgRunType -eq "Legacy") {
-                $orgCmdletJobResults = Add-JobOrganizationInformation -RunType "Legacy"
+                $orgCmdletJobResults = Invoke-JobOrganizationInformation
             }
 
             Write-Verbose "Took $($stopWatch.Elapsed.TotalSeconds) seconds to complete the Add-JobExchangeInformationCmdlet $exchCmdletRunType" -Verbose
