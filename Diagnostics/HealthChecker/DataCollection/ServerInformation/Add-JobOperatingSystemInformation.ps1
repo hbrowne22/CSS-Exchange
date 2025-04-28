@@ -3,20 +3,15 @@
 
 . $PSScriptRoot\..\..\..\..\Shared\VisualCRedistributableVersionFunctions.ps1
 . $PSScriptRoot\..\..\..\..\Shared\Get-NETFrameworkVersion.ps1
+. $PSScriptRoot\Invoke-JobOperatingSystemInformation.ps1
 
 function Add-JobOperatingSystemInformation {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ComputerName,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateSet("Legacy", "Queue", "StartNow")]
-        [string]$RunType
+        [string]$ComputerName
     )
     process {
-
-        . $PSScriptRoot\Invoke-JobOperatingSystemInformation.ps1
 
         Write-Verbose "Calling: $($MyInvocation.MyCommand)"
         $nonDefaultSbDependencies = @(
@@ -34,23 +29,19 @@ function Add-JobOperatingSystemInformation {
             ${Function:Get-WmiObjectHandler}
         )
 
-        if ($RunType -eq "Legacy") {
-            throw "Legacy Not Implemented"
-        } else {
-            $sbInjectionParams = @{
-                PrimaryScriptBlock = ${Function:Invoke-JobOperatingSystemInformation}
-                IncludeScriptBlock = $nonDefaultSbDependencies
-            }
-            $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
-            $params = @{
-                JobParameter = @{
-                    ComputerName = $ComputerName
-                    ScriptBlock  = $scriptBlock
-                }
-                JobId        = "Invoke-JobOperatingSystemInformation-$ComputerName"
-                TryStartNow  = $RunType -eq "StartNow"
-            }
-            Add-JobQueue @params
+        $sbInjectionParams = @{
+            PrimaryScriptBlock = ${Function:Invoke-JobOperatingSystemInformation}
+            IncludeScriptBlock = $nonDefaultSbDependencies
         }
+        $scriptBlock = Get-HCDefaultSBInjection @sbInjectionParams
+        $params = @{
+            JobParameter = @{
+                ComputerName = $ComputerName
+                ScriptBlock  = $scriptBlock
+            }
+            JobId        = "Invoke-JobOperatingSystemInformation-$ComputerName"
+            TryStartNow  = $true
+        }
+        Add-JobQueue @params
     }
 }
